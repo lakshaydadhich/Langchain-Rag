@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Complete RAG Evaluation Guide</title>
+<style>
+  :root{
+    --navy:#12305f;
+    --green:#2e7d4f;
+    --green-bg:#eaf4ee;
+    --purple:#5a3a86;
+    --purple-bg:#efeaf6;
+    --blue:#1f5fb0;
+    --blue-bg:#e9f1fb;
+    --orange:#d1741a;
+    --orange-bg:#fbf0e3;
+    --teal:#1f7a8c;
+    --ink:#1c2733;
+    --muted:#5a6672;
+    --line:#d9e0e8;
+    --card:#ffffff;
+    --page:#f4f6f9;
+    --ok:#2e7d4f;
+    --bad:#c0392b;
+    --code:#f1f4f8;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--page);
+    color:var(--ink);
+    line-height:1.55;
+    font-size:15px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 22px 80px;}
+
+  /* Header */
+  header.hero{
+    text-align:center;
+    background:linear-gradient(180deg,#ffffff, #eef2f8);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:34px 24px 28px;
+    margin-bottom:26px;
+  }
+  header.hero h1{
+    margin:0 0 6px;
+    font-size:clamp(28px,5vw,46px);
+    letter-spacing:.5px;
+    color:var(--navy);
+    font-weight:800;
+  }
+  header.hero p.sub{
+    margin:0;
+    color:var(--muted);
+    font-size:clamp(14px,2vw,17px);
+    font-weight:600;
+  }
+
+  /* Pipeline */
+  .pipeline{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    margin:22px 0 8px;
+  }
+  .node{
+    border-radius:12px;
+    padding:12px 16px;
+    font-weight:700;
+    font-size:14px;
+    text-align:center;
+    min-width:96px;
+    border:1.5px solid;
+  }
+  .n1{background:#e9f1fb;border-color:#8fb4e0;color:#1f5fb0;}
+  .n2{background:#eaf4ee;border-color:#8ecaa4;color:#2e7d4f;}
+  .n3{background:#fbf6e3;border-color:#e0cd83;color:#a5851a;}
+  .n4{background:#efeaf6;border-color:#b39fd0;color:#5a3a86;}
+  .n5{background:#e9f1fb;border-color:#8fb4e0;color:#1f5fb0;}
+  .arrow{color:var(--muted);font-size:20px;font-weight:700;}
+
+  /* TOC */
+  nav.toc{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:16px 20px;
+    margin-bottom:28px;
+  }
+  nav.toc h2{margin:0 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+  nav.toc ol{margin:0;padding-left:20px;columns:2;column-gap:32px;}
+  nav.toc li{margin:3px 0;}
+  nav.toc a{color:var(--navy);text-decoration:none;font-weight:600;}
+  nav.toc a:hover{text-decoration:underline;}
+
+  /* Sections */
+  section{margin-bottom:30px;}
+  .sec-head{
+    color:#fff;
+    border-radius:10px 10px 0 0;
+    padding:12px 18px;
+    font-size:19px;
+    font-weight:800;
+    letter-spacing:.4px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .sec-body{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-top:none;
+    border-radius:0 0 12px 12px;
+    padding:20px;
+  }
+  .s-green .sec-head{background:var(--green);}
+  .s-purple .sec-head{background:var(--purple);}
+  .s-blue .sec-head{background:var(--blue);}
+  .s-orange .sec-head{background:var(--orange);}
+  .s-navy .sec-head{background:var(--navy);}
+  .s-teal .sec-head{background:var(--teal);}
+
+  .grid{display:grid;gap:16px;}
+  .g2{grid-template-columns:repeat(2,1fr);}
+  .g3{grid-template-columns:repeat(3,1fr);}
+  @media(max-width:820px){.g2,.g3{grid-template-columns:1fr;}nav.toc ol{columns:1;}}
+
+  .metric{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+    background:#fcfdff;
+  }
+  .metric h3{
+    margin:0 0 4px;
+    font-size:16px;
+  }
+  .metric .tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);}
+  .s-green .metric h3{color:var(--green);}
+  .s-purple .metric h3{color:var(--purple);}
+  .metric .q{color:var(--muted);font-style:italic;margin:4px 0 8px;font-size:14px;}
+
+  .formula{
+    background:var(--code);
+    border:1px solid var(--line);
+    border-left:4px solid var(--navy);
+    border-radius:6px;
+    padding:8px 12px;
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    font-size:13.5px;
+    margin:8px 0;
+    overflow-x:auto;
+  }
+  .frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:middle;margin:0 4px;}
+  .frac .num{border-bottom:1.5px solid var(--ink);padding:0 6px 1px;}
+  .frac .den{padding:1px 6px 0;}
+
+  .ex{
+    background:#f7f9fc;
+    border:1px dashed var(--line);
+    border-radius:6px;
+    padding:8px 12px;
+    margin:8px 0;
+    font-size:13.5px;
+  }
+  .ex b{color:var(--navy);}
+  .callout{
+    background:var(--green-bg);
+    border:1px solid #bfe0cc;
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:13.5px;
+  }
+  .s-purple .callout{background:var(--purple-bg);border-color:#cdbfe4;}
+
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0;}
+  th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;}
+  th{background:#eef2f8;color:var(--navy);font-weight:700;}
+  td.c,th.c{text-align:center;}
+  .ok{color:var(--ok);font-weight:700;}
+  .bad{color:var(--bad);font-weight:700;}
+
+  ul.clean{margin:6px 0;padding-left:20px;}
+  ul.clean li{margin:3px 0;}
+
+  /* production chips */
+  .prod{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  @media(max-width:820px){.prod{grid-template-columns:1fr;}}
+  .chip{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fcfdff;}
+  .chip h4{margin:0 0 6px;color:var(--blue);font-size:15px;}
+
+  .glance{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  @media(max-width:820px){.glance{grid-template-columns:1fr;}}
+  .glance .chip h4{color:var(--navy);}
+
+  .tools{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+  @media(max-width:820px){.tools{grid-template-columns:1fr;}}
+  .tool{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fcfdff;}
+  .tool h4{margin:0 0 4px;color:var(--teal);font-size:15px;}
+  .tool p{margin:0;font-size:13px;color:var(--muted);}
+
+  .keydist{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;}
+  @media(max-width:820px){.keydist{grid-template-columns:1fr;}}
+  .kd{border-radius:10px;padding:14px 16px;font-size:14px;}
+  .kd.r{background:var(--green-bg);border:1px solid #bfe0cc;}
+  .kd.g{background:var(--blue-bg);border:1px solid #a9c7ea;}
+  .kd .vs{font-weight:800;color:var(--muted);text-align:center;}
+
+  .cheat{background:#f7f9fc;border:1px solid var(--line);border-radius:10px;padding:16px 18px;}
+  .cheat code{background:#fff;border:1px solid var(--line);padding:1px 5px;border-radius:4px;font-size:12.5px;}
+
+  footer{text-align:center;color:var(--muted);font-size:12.5px;margin-top:30px;}
+  .backtop{position:fixed;right:18px;bottom:18px;background:var(--navy);color:#fff;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:20px;box-shadow:0 4px 12px rgba(0,0,0,.2);}
+</style>
+</head>
+<body>
+<div class="wrap" id="top">
+
+  <header class="hero">
+    <h1>Complete RAG Evaluation Guide</h1>
+    <p class="sub">Evaluate RAG at three levels:&nbsp; 1) Retrieval Quality&nbsp;&nbsp; 2) Generation Quality&nbsp;&nbsp; 3) End-to-End &amp; Production</p>
+    <div class="pipeline">
+      <div class="node n1">Question<br><span style="font-size:18px">❓</span></div>
+      <span class="arrow">➜</span>
+      <div class="node n2">Retriever<br><span style="font-size:18px">🔍</span></div>
+      <span class="arrow">➜</span>
+      <div class="node n3">Retrieved<br>Context 📄</div>
+      <span class="arrow">➜</span>
+      <div class="node n4">LLM<br>(Generator) 🧠</div>
+      <span class="arrow">➜</span>
+      <div class="node n5">Answer<br><span style="font-size:18px">💬</span></div>
+    </div>
+  </header>
+
+  <!-- AT A GLANCE -->
+  <section class="s-navy">
+    <div class="sec-head">RAG Evaluation at a Glance</div>
+    <div class="sec-body">
+      <div class="glance">
+        <div class="chip">
+          <h4>Retrieval Evaluation</h4>
+          <p style="margin:0 0 6px;color:var(--muted)">Did we retrieve the right information?</p>
+          <p style="margin:0;font-size:13px"><b>Metrics:</b> Precision, Recall, Hit@K, MRR, NDCG, Context Precision, Context Recall.</p>
+        </div>
+        <div class="chip">
+          <h4>Generation Evaluation</h4>
+          <p style="margin:0 0 6px;color:var(--muted)">Did the LLM use the information correctly?</p>
+          <p style="margin:0;font-size:13px"><b>Metrics:</b> Faithfulness (Groundedness), Answer Relevance, Answer Correctness, Hallucination Rate.</p>
+        </div>
+        <div class="chip">
+          <h4>End-to-End &amp; Production</h4>
+          <p style="margin:0 0 6px;color:var(--muted)">Overall system performance &amp; user value.</p>
+          <p style="margin:0;font-size:13px"><b>Metrics:</b> Quality + Latency + Cost + Reliability + User Feedback.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#s1">Retrieval Evaluation Metrics</a></li>
+      <li><a href="#s2">Generation Evaluation Metrics</a></li>
+      <li><a href="#s3">End-to-End &amp; Production Metrics</a></li>
+      <li><a href="#s4">Evaluation Dataset</a></li>
+      <li><a href="#s5">LLM-as-a-Judge Evaluation</a></li>
+      <li><a href="#s6">Complete RAG Evaluation Architecture</a></li>
+      <li><a href="#s7">Popular RAG Evaluation Tools</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1. RETRIEVAL -->
+  <section class="s-green" id="s1">
+    <div class="sec-head">1. Retrieval Evaluation Metrics</div>
+    <div class="sec-body">
+      <div class="grid g3">
+
+        <div class="metric">
+          <h3>1.1 Precision@K</h3>
+          <span class="tag">Top-K Precision</span>
+          <p class="q">Of the retrieved chunks, how many are relevant?</p>
+          <div class="formula">Precision@K =
+            <span class="frac"><span class="num"># Relevant Retrieved</span><span class="den">K</span></span>
+          </div>
+          <div class="ex">
+            <b>Example (K=5)</b>
+            <table>
+              <tr><th>Rank</th><th>Retrieved Chunk</th><th class="c">Relevant?</th></tr>
+              <tr><td class="c">1</td><td>Chunk 1</td><td class="c ok">✔</td></tr>
+              <tr><td class="c">2</td><td>Chunk 2</td><td class="c bad">✘</td></tr>
+              <tr><td class="c">3</td><td>Chunk 3</td><td class="c ok">✔</td></tr>
+              <tr><td class="c">4</td><td>Chunk 4</td><td class="c bad">✘</td></tr>
+              <tr><td class="c">5</td><td>Chunk 5</td><td class="c ok">✔</td></tr>
+            </table>
+            Relevant = 3 &nbsp;→&nbsp; Precision@5 = 3/5 = <b>0.60 (60%)</b>
+          </div>
+        </div>
+
+        <div class="metric">
+          <h3>1.2 Recall@K</h3>
+          <p class="q">Of all relevant chunks, how many were retrieved?</p>
+          <div class="formula">Recall@K =
+            <span class="frac"><span class="num"># Relevant Retrieved</span><span class="den"># Total Relevant</span></span>
+          </div>
+          <div class="ex">
+            <b>Example (K=5)</b><br>
+            Total relevant chunks in DB = 4<br>
+            Retrieved relevant chunks = 3<br>
+            Recall@5 = 3/4 = <b>0.75 (75%)</b>
+          </div>
+          <div class="callout">
+            <b>Precision vs Recall</b><br>
+            <b>Precision</b> → Of what I retrieved, how much was relevant?<br>
+            <b>Recall</b> → Of everything relevant, how much did I retrieve?
+          </div>
+        </div>
+
+        <div class="metric">
+          <h3>1.3 Hit Rate / Hit@K</h3>
+          <p class="q">Was at least one relevant document retrieved in top K?</p>
+          <div class="formula">Hit@K = { 1, if ≥ 1 relevant in top K&nbsp;&nbsp; 0, otherwise }</div>
+          <div class="ex">
+            <b>Example (K=5)</b><br>
+            Top 5: <span class="bad">✘</span> <span class="bad">✘</span> <span class="ok">✔</span> <span class="bad">✘</span> <span class="bad">✘</span><br>
+            Hit@5 = <b>1</b><br><br>
+            If evaluating 100 questions and 85 have ≥ 1 relevant in top 5:<br>
+            Hit@5 = 85/100 = <b>0.85 (85%)</b>
+          </div>
+        </div>
+
+        <div class="metric">
+          <h3>1.4 MRR</h3>
+          <span class="tag">Mean Reciprocal Rank</span>
+          <p class="q">How high is the first relevant result?</p>
+          <div class="formula">For each query: RR = 1 / rank of first relevant document</div>
+          <div class="ex">
+            <b>Example</b>
+            <table>
+              <tr><th>Query</th><th class="c">Rank of First Relevant</th><th class="c">RR</th></tr>
+              <tr><td>Q1</td><td class="c">1</td><td class="c">1/1 = 1.00</td></tr>
+              <tr><td>Q2</td><td class="c">2</td><td class="c">1/2 = 0.50</td></tr>
+              <tr><td>Q3</td><td class="c">4</td><td class="c">1/4 = 0.25</td></tr>
+            </table>
+            MRR = (1 + 0.50 + 0.25) / 3 = <b>0.583 (58.3%)</b><br>
+            <span style="color:var(--muted)">MRR only cares about the first relevant result.</span>
+          </div>
+        </div>
+
+        <div class="metric">
+          <h3>1.5 NDCG@K</h3>
+          <span class="tag">Normalized Discounted Cumulative Gain</span>
+          <p class="q">Considers relevance and ranking position. Handles graded relevance.</p>
+          <div class="ex">
+            <b>Relevance Levels Example</b>
+            <ul class="clean">
+              <li>3 = Highly Relevant</li>
+              <li>2 = Relevant</li>
+              <li>1 = Slightly Relevant</li>
+              <li>0 = Irrelevant</li>
+            </ul>
+            <b>Example (K=4)</b>
+            <table>
+              <tr><th>Rank</th><th class="c">Relevance</th></tr>
+              <tr><td class="c">1</td><td class="c">3</td></tr>
+              <tr><td class="c">2</td><td class="c">2</td></tr>
+              <tr><td class="c">3</td><td class="c">0</td></tr>
+              <tr><td class="c">4</td><td class="c">1</td></tr>
+            </table>
+          </div>
+          <div class="formula">DCG@K = Σ<sub>i=1..K</sub> (2^rel<sub>i</sub> − 1) / log₂(i + 1)</div>
+          <div class="formula">IDCG@K = DCG@K of ideal ranking (sorted by relevance desc)</div>
+          <div class="formula">NDCG@K = DCG@K / IDCG@K &nbsp;&nbsp;(Range: 0 to 1)</div>
+          <p style="font-size:13px;color:var(--muted);margin:4px 0 0">1.0 = perfect ranking, 0 = worst</p>
+        </div>
+
+        <div class="metric">
+          <h3>1.6 Context Precision</h3>
+          <span class="tag">RAG Specific</span>
+          <p class="q">How relevant is the retrieved context to the question?</p>
+          <div class="formula">Context Precision =
+            <span class="frac"><span class="num"># Relevant Retrieved Chunks</span><span class="den"># Retrieved Chunks</span></span>
+          </div>
+          <div class="ex">
+            <b>Example</b><br>
+            Retrieved 5 chunks. Relevant = 3<br>
+            Context Precision = 3/5 = <b>0.60 (60%)</b>
+          </div>
+        </div>
+
+        <div class="metric">
+          <h3>1.7 Context Recall</h3>
+          <span class="tag">RAG Specific</span>
+          <p class="q">Did retrieval provide all the information needed to answer?</p>
+          <div class="formula">Context Recall =
+            <span class="frac"><span class="num"># Relevant / Required Info Retrieved</span><span class="den"># Total Required Info</span></span>
+          </div>
+          <div class="ex">
+            <b>Example</b><br>
+            Answer needs 4 pieces of information.<br>
+            Retrieved 3 of them.<br>
+            Context Recall = 3/4 = <b>0.75 (75%)</b>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. GENERATION -->
+  <section class="s-purple" id="s2">
+    <div class="sec-head">2. Generation Evaluation Metrics</div>
+    <div class="sec-body">
+      <div class="grid g2">
+
+        <div class="metric">
+          <h3>2.1 Faithfulness / Groundedness</h3>
+          <p class="q">Is the answer supported by the retrieved context? Break answer into claims.</p>
+          <div class="ex">
+            <b>Example</b><br>
+            <b>Context:</b>
+            <ul class="clean"><li>Refunds within 30 days.</li><li>Original receipt required.</li></ul>
+            <b>LLM Answer (3 claims):</b>
+            <table>
+              <tr><td>1. Refunds within 30 days.</td><td class="c ok">✔</td></tr>
+              <tr><td>2. Original receipt required.</td><td class="c ok">✔</td></tr>
+              <tr><td>3. Refunds available for 60 days.</td><td class="c bad">✘</td></tr>
+            </table>
+          </div>
+          <div class="formula">Faithfulness =
+            <span class="frac"><span class="num">Supported Claims</span><span class="den">Total Claims</span></span>
+            = 2/3 = 0.667 (66.7%)
+          </div>
+        </div>
+
+        <div class="metric">
+          <h3>2.2 Answer Relevance</h3>
+          <p class="q">Does the answer actually address the question? Usually evaluated using semantic similarity or LLM judge.</p>
+          <div class="ex">
+            <b>Q:</b> "What is the refund period?"<br><br>
+            <b>Answer A:</b> "The refund period is 30 days."<br>
+            Score: <b>0.95</b> (Highly relevant)<br><br>
+            <b>Answer B:</b> "The company was founded in 2015."<br>
+            Score: <b>0.10</b> (Not relevant)
+          </div>
+        </div>
+
+        <div class="metric">
+          <h3>2.3 Answer Correctness</h3>
+          <p class="q">Is the generated answer factually correct compared to ground truth?</p>
+          <div class="ex">
+            <b>Ground Truth:</b> "Refunds are available within 30 days."<br><br>
+            <b>Generated:</b> "Customers can request a refund within 30 days."<br>
+            → Meaning matches. <b>High correctness.</b>
+          </div>
+          <p style="font-size:13px;color:var(--muted)">(Score via semantic/factual comparison or LLM judge)</p>
+        </div>
+
+        <div class="metric">
+          <h3>2.4 Hallucination Rate</h3>
+          <p class="q">Measures unsupported claims in the answer.</p>
+          <div class="ex">
+            <b>Example</b><br>
+            Total claims = 10<br>
+            Unsupported claims = 2<br><br>
+            Hallucination Rate = 2/10 = <b>0.20 (20%)</b><br><br>
+            Grounded Claim Rate = 1 − 0.20 = <b>0.80 (80%)</b>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. END TO END -->
+  <section class="s-blue" id="s3">
+    <div class="sec-head">3. End-to-End &amp; Production Metrics</div>
+    <div class="sec-body">
+      <div class="prod">
+        <div class="chip">
+          <h4>⏱ Latency</h4>
+          <p style="margin:0 0 6px">Measure each stage:</p>
+          <ul class="clean">
+            <li>Retrieval latency</li>
+            <li>Reranking latency</li>
+            <li>Generation latency</li>
+            <li>Total latency</li>
+          </ul>
+          <div class="formula">Latency = T<sub>response</sub> − T<sub>request</sub></div>
+          <div class="ex">
+            <b>Example</b><br>
+            10:00:00.000 → request<br>
+            10:00:01.800 → response<br>
+            Latency = <b>1.8 seconds</b>
+          </div>
+        </div>
+
+        <div class="chip">
+          <h4>💲 Cost</h4>
+          <p style="margin:0 0 6px">Usually based on LLM token usage.</p>
+          <div class="formula">Cost = (Input Tokens × Input Price) + (Output Tokens × Output Price)</div>
+          <ul class="clean">
+            <li>Input tokens</li>
+            <li>Output tokens</li>
+            <li>Total tokens</li>
+          </ul>
+          <div class="ex">
+            <b>Example</b><br>
+            Input = 2,000 tokens<br>
+            Output = 500 tokens<br>
+            Input price = $X / 1M tokens<br>
+            Output price = $Y / 1M tokens<br>
+            Cost = 2000·X/1M + 500·Y/1M
+          </div>
+        </div>
+
+        <div class="chip">
+          <h4>🗄 Token Usage</h4>
+          <p style="margin:0 0 6px">Track tokens for performance &amp; cost.</p>
+          <ul class="clean">
+            <li>Input tokens</li>
+            <li>Output tokens</li>
+            <li>Total tokens</li>
+          </ul>
+        </div>
+
+        <div class="chip">
+          <h4>🛡 Reliability</h4>
+          <ul class="clean">
+            <li>Retrieval failure rate</li>
+            <li>Empty retrieval rate</li>
+            <li>Timeout rate</li>
+            <li>Error rate</li>
+            <li>API failure rate</li>
+          </ul>
+        </div>
+
+        <div class="chip">
+          <h4>🏅 Quality (Production)</h4>
+          <ul class="clean">
+            <li>Faithfulness score</li>
+            <li>Answer correctness</li>
+            <li>Hallucination rate</li>
+            <li>"No answer" accuracy</li>
+            <li>User feedback score</li>
+          </ul>
+        </div>
+
+        <div class="chip">
+          <h4>⚙ System</h4>
+          <ul class="clean">
+            <li>Throughput (QPS)</li>
+            <li>Resource usage (CPU, Memory)</li>
+            <li>Vector DB latency</li>
+            <li>Indexing health</li>
+            <li>Cache hit rate</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. DATASET -->
+  <section class="s-orange" id="s4">
+    <div class="sec-head">4. Evaluation Dataset</div>
+    <div class="sec-body">
+      <p style="margin-top:0;font-weight:600">Create a high-quality evaluation dataset.</p>
+      <div class="pipeline" style="justify-content:flex-start;margin:6px 0 16px">
+        <div class="node n2">Question 💬</div>
+        <span class="arrow">➜</span>
+        <div class="node n3">Ground Truth<br>Answer 📄</div>
+        <span class="arrow">➜</span>
+        <div class="node n1">Relevant<br>Documents / Chunks 📄</div>
+      </div>
+
+      <b style="color:var(--orange)">Example Table</b>
+      <table>
+        <tr><th>Question</th><th>Ground Truth Answer</th><th>Relevant Chunk(s)</th></tr>
+        <tr><td>What is refund period?</td><td>30 days</td><td>chunk_17</td></tr>
+        <tr><td>How can I reset password?</td><td>Use reset link</td><td>chunk_42</td></tr>
+        <tr><td>What is annual fee?</td><td>$99</td><td>chunk_83</td></tr>
+        <tr><td>What is late fee?</td><td>$10 per day</td><td>chunk_91</td></tr>
+        <tr><td>Do you offer free trial?</td><td>Yes, 7 days</td><td>chunk_15</td></tr>
+      </table>
+
+      <div class="grid g2" style="margin-top:14px">
+        <div class="metric">
+          <b style="color:var(--orange)">Dataset Size Recommendation</b>
+          <ul class="clean">
+            <li>50–100 questions → basic testing</li>
+            <li>200–500 questions → strong evaluation</li>
+            <li>500+ questions → production-scale evaluation</li>
+          </ul>
+        </div>
+        <div class="metric">
+          <b style="color:var(--orange)">Include diverse question types</b>
+          <ul class="clean">
+            <li>Simple factual &nbsp;·&nbsp; Multi-hop &nbsp;·&nbsp; Comparison &nbsp;·&nbsp; Numerical</li>
+            <li>Long-context &nbsp;·&nbsp; Ambiguous &nbsp;·&nbsp; No-answer</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. LLM AS JUDGE -->
+  <section class="s-purple" id="s5">
+    <div class="sec-head">5. LLM-as-a-Judge Evaluation</div>
+    <div class="sec-body">
+      <div class="pipeline" style="margin:0 0 18px">
+        <div class="node n2">Question 💬</div>
+        <span class="arrow">➜</span>
+        <div class="node n3">Retrieved<br>Context 📄</div>
+        <span class="arrow">➜</span>
+        <div class="node n4">Generated<br>Answer 💬</div>
+        <span class="arrow">➜</span>
+        <div class="node n4">Judge<br>LLM 🧠</div>
+        <span class="arrow">➜</span>
+        <div class="node n1">Score<br>(1–5) ⭐</div>
+      </div>
+      <div class="grid g3">
+        <div class="metric">
+          <b style="color:var(--purple)">Judge Criteria (Example)</b>
+          <ol class="clean">
+            <li>Is the answer relevant?</li>
+            <li>Is it factually correct?</li>
+            <li>Is it supported by context?</li>
+            <li>Does it contain hallucinations?</li>
+          </ol>
+        </div>
+        <div class="metric">
+          <b style="color:var(--purple)">Example Score</b>
+          <table>
+            <tr><td>Faithfulness</td><td class="c">4 / 5</td></tr>
+            <tr><td>Answer Relevance</td><td class="c">5 / 5</td></tr>
+            <tr><td>Correctness</td><td class="c">4 / 5</td></tr>
+            <tr><td>Hallucination</td><td class="c">1 / 5</td></tr>
+            <tr><th>Overall Score</th><th class="c">4.3 / 5</th></tr>
+          </table>
+        </div>
+        <div class="metric">
+          <b style="color:var(--purple)">Best Practice</b>
+          <p style="margin:6px 0 0">Use LLM-as-a-Judge + Automated Metrics + Human Evaluation for reliable results.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. ARCHITECTURE -->
+  <section class="s-navy" id="s6">
+    <div class="sec-head">6. Complete RAG Evaluation Architecture</div>
+    <div class="sec-body">
+      <div class="pipeline" style="margin:0 0 16px">
+        <div class="node n1" style="min-width:150px">Evaluation Dataset<br><span style="font-weight:500;font-size:12px">(Questions + Ground Truth + Relevant Docs)</span></div>
+        <span class="arrow">➜</span>
+        <div class="node n2">Questions</div>
+        <span class="arrow">➜</span>
+        <div class="node n2">Retriever</div>
+        <span class="arrow">➜</span>
+        <div class="node n3">Retrieved<br>Chunks</div>
+        <span class="arrow">➜</span>
+        <div class="node n4">LLM<br>Generation</div>
+        <span class="arrow">➜</span>
+        <div class="node n1">Answer</div>
+      </div>
+      <div class="grid g2">
+        <div class="metric">
+          <h3 style="color:var(--green)">Retrieval Evaluation</h3>
+          <ul class="clean">
+            <li>Precision@K &nbsp;·&nbsp; Recall@K</li>
+            <li>Hit@K &nbsp;·&nbsp; MRR</li>
+            <li>NDCG &nbsp;·&nbsp; Context Precision</li>
+            <li>Context Recall</li>
+          </ul>
+        </div>
+        <div class="metric">
+          <h3 style="color:var(--purple)">Generation Evaluation</h3>
+          <ul class="clean">
+            <li>Faithfulness</li>
+            <li>Answer Relevance</li>
+            <li>Answer Correctness</li>
+            <li>Hallucination Rate</li>
+          </ul>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:14px">
+        <div style="display:inline-block;background:#eef2f8;border:1px solid var(--line);border-radius:8px;padding:8px 20px;font-weight:700;color:var(--navy);margin:4px">Overall RAG Score</div><br>
+        <div style="display:inline-block;background:#eef2f8;border:1px solid var(--line);border-radius:8px;padding:8px 20px;font-weight:700;color:var(--navy);margin:4px">Production Monitoring &amp; Continuous Improvement</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. TOOLS -->
+  <section class="s-teal" id="s7">
+    <div class="sec-head">7. Popular RAG Evaluation Tools</div>
+    <div class="sec-body">
+      <div class="tools">
+        <div class="tool">
+          <h4>Ragas</h4>
+          <p>Open-source framework for RAG evaluation. Metrics: Context Precision, Context Recall, Faithfulness, Answer Relevance, Correctness, Hallucination, etc.</p>
+        </div>
+        <div class="tool">
+          <h4>DeepEval</h4>
+          <p>Evaluate LLMs, RAG, Agents, and conversational systems with many ready-to-use metrics and test cases.</p>
+        </div>
+        <div class="tool">
+          <h4>LangSmith</h4>
+          <p>Tracing, evaluation, dataset management, experiment comparison, and observability.</p>
+        </div>
+        <div class="tool">
+          <h4>TruLens</h4>
+          <p>Evaluate LLM applications with feedback functions, groundedness, relevance, and more.</p>
+        </div>
+        <div class="tool">
+          <h4>Arize Phoenix</h4>
+          <p>Production evaluation, monitoring, prompt tracing, drift detection, and more.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHEAT SHEET -->
+  <section class="s-navy">
+    <div class="sec-head">Quick Reference — Metrics Cheat Sheet</div>
+    <div class="sec-body">
+      <div class="grid g2">
+        <div class="cheat">
+          <b style="color:var(--green)">Retrieval Metrics</b>
+          <ul class="clean">
+            <li><b>Precision@K</b> → Relevant retrieved / K</li>
+            <li><b>Recall@K</b> → Relevant retrieved / Total relevant</li>
+            <li><b>Hit@K</b> → 1 if ≥ 1 relevant in top K, else 0</li>
+            <li><b>MRR</b> → 1 / rank of first relevant</li>
+            <li><b>NDCG</b> → DCG / IDCG (considers relevance + rank)</li>
+            <li><b>Context Precision</b> → Relevance of retrieved context</li>
+            <li><b>Context Recall</b> → Completeness of retrieved context</li>
+          </ul>
+        </div>
+        <div class="cheat">
+          <b style="color:var(--purple)">Generation Metrics</b>
+          <ul class="clean">
+            <li><b>Faithfulness</b> → Supported claims / Total claims</li>
+            <li><b>Answer Relevance</b> → Does answer address question?</li>
+            <li><b>Answer Correctness</b> → Matches ground truth answer</li>
+            <li><b>Hallucination Rate</b> → Unsupported claims / Total claims</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="keydist" style="margin-top:16px">
+        <div class="kd r">🧭 <b>Retrieval Metrics</b> tell you whether you found the <b>right information</b>.</div>
+        <div class="vs">VS</div>
+        <div class="kd g">🧭 <b>Generation Metrics</b> tell you whether the LLM produced the <b>right answer from that information</b>.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Complete RAG Evaluation Guide · Retrieval Quality · Generation Quality · End-to-End &amp; Production
+  </footer>
+
+</div>
+<a href="#top" class="backtop" title="Back to top">↑</a>
+</body>
+</html>
